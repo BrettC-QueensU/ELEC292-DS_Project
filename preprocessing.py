@@ -35,8 +35,6 @@ for filepath in files:
 
 files = glob.glob('Raw_Data/Logan_data/*/*.csv')
 
-print(files)
-
 # Preprocessing Logan Data
 for filepath in files:
     # import csv file as data frame, and interpolate to fill any missing values
@@ -61,6 +59,34 @@ for filepath in files:
     filename = filepath.split('Logan_data/')[1].split("/Raw Data")[0]
 
     df_processed.to_csv('Pre-Processed_Data/Logan/' + filename + '_PreProcessed.csv', index=False)
+
+
+files = glob.glob('Raw_Data/Vince_Data/*/*.csv')
+
+# Preprocessing Vince Data
+for filepath in files:
+    # import csv file as data frame, and interpolate to fill any missing values
+    df = pd.read_csv(filepath)
+    df = df.interpolate(method='linear', inPlace=True)
+    df_acc = df.drop(columns='Time (s)')
+
+    # use a rolling mean on the data, with a
+    window_size = 21
+    y_sma = df_acc.rolling(window_size).mean()
+
+    # replacing the acceleration columns in the data frame with the ones in y_sma
+    df['Linear Acceleration x (m/s^2)'] = y_sma['Linear Acceleration x (m/s^2)']
+    df['Linear Acceleration y (m/s^2)'] = y_sma['Linear Acceleration y (m/s^2)']
+    df['Linear Acceleration z (m/s^2)'] = y_sma['Linear Acceleration z (m/s^2)']
+    df['Absolute acceleration (m/s^2)'] = y_sma['Absolute acceleration (m/s^2)']
+
+    # delete rows with na at the start resulting from applying sma
+    df_processed = df.dropna()
+
+    # creating a new csv file with the pre-processed data
+    filename = filepath.split('Vince_Data/')[1].split("/Raw Data")[0]
+
+    df_processed.to_csv('Pre-Processed_Data/Vince/' + filename + '_PreProcessed.csv', index=False)
 
 
 #Visualisation used to aid with trial and error of window size
