@@ -4,7 +4,7 @@ import pandas as pd
 
 
 
-def preprocess_csv(input_filepath, output_filename):
+def preprocess_csv(input_filepath):
     # import csv file as data frame, and interpolate to fill any missing values
     df = pd.read_csv(input_filepath)
     df = df.interpolate(method='linear', inplace=True)
@@ -23,30 +23,33 @@ def preprocess_csv(input_filepath, output_filename):
     # delete rows with na at the start resulting from applying sma
     df_processed = df.dropna()
 
+    # return the preprocessed data frame
+    return df_processed
+
     # creating a new csv file with the pre-processed data
     df_processed.to_csv(output_filename + '.csv', index=False)
 
 
 # Preprocessing Brett Data
 files = glob.glob('Raw_Data/Brett_RawData/*.csv')
-
 for filepath in files:
     filename = filepath.split('_RawData/')[1].split("_RawData.csv")[0]
-    preprocess_csv(filepath, 'Pre-Processed_Data/Brett/' + filename + '_PreProcessed')
+    df_processed_Brett = (preprocess_csv(filepath))
+    df_processed_Brett.to_csv('Pre-Processed_Data/Brett/' + filename + '_PreProcessed.csv', index=False)
 
 # Preprocessing Logan Data
 files = glob.glob('Raw_Data/Logan_data/*/*.csv')
-
 for filepath in files:
     filename = filepath.split('Logan_data/')[1].split("/Raw Data")[0]
-    preprocess_csv(filepath, 'Pre-Processed_Data/Logan/' + filename + '_PreProcessed')
+    df_processed_Logan = preprocess_csv(filepath)
+    df_processed_Logan.to_csv('Pre-Processed_Data/Logan/' + filename + '_PreProcessed.csv', index=False)
 
 # Preprocessing Vince Data
 files = glob.glob('Raw_Data/Vince_Data/*/*.csv')
-
 for filepath in files:
     filename = filepath.split('Vince_Data/')[1].split("/Raw Data")[0]
-    preprocess_csv(filepath, 'Pre-Processed_Data/Vince/' + filename + '_PreProcessed')
+    df_processed_Vince = preprocess_csv(filepath)
+    df_processed_Vince.to_csv('Pre-Processed_Data/Vince/' + filename + '_PreProcessed.csv', index=False)
 
 
 #fig, jump = plt.subplots(figsize=(12, 5))
