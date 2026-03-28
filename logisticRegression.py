@@ -118,7 +118,7 @@ plt.show()
 
 # ── Save the trained model and label encoder ──────────────────────────────────
 # Saved as a pickle file so the desktop app (app.py) can load it
-with open('logistic_model.pkl', 'wb') as f:
-    pickle.dump({'model': clf, 'label_encoder': le}, f)
+with open('logistic_model.pkl', 'wb') as file:
+    pickle.dump({'model': clf, 'label_encoder': le}, file)
 
 print('Model saved --> logistic_model.pkl')

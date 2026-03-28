@@ -1,5 +1,6 @@
 import sys
 import pandas as pd
+import pickle
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -17,13 +18,17 @@ def run_classification(input_path):
     Replace the body of this function with your classification logic.
     """
 
-
+    # preprocess data
     df_processed = preprocess_csv(input_path)
 
+    # extract features
 
-    # -- your classification code goes here --
-    # e.g. preprocess, segment into windows, extract features, predict labels
-    # output_df should have one row per window with a 'label' column
+    # load the logistic regression model
+    with open('logistic_model.pkl', 'wb') as file:
+        model = pickle.load(file)
+
+    # run the model
+
 
     output_df = pd.DataFrame({'label': []})  # placeholder
     return output_df
