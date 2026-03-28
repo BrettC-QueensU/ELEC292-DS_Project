@@ -8,13 +8,18 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
+from preprocessing import preprocess_csv
+
 
 def run_classification(input_path):
     """
     Load the input CSV, classify each window, and return an output DataFrame.
     Replace the body of this function with your classification logic.
     """
-    df = pd.read_csv(input_path)
+
+
+    df_processed = preprocess_csv(input_path)
+
 
     # -- your classification code goes here --
     # e.g. preprocess, segment into windows, extract features, predict labels
