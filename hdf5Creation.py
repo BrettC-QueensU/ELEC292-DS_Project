@@ -75,6 +75,3 @@ with h5py.File('./hdf5_data.h5', 'w') as hdf:
     G31.create_dataset('Train', data = train_df)
     G32 = hdf.create_group('/Segmented Data/Test')
     G32.create_dataset('Test', data = test_df)
-
-    # call function from feature extraction and add the dfs with data to respective Train/Test subgroups
-
