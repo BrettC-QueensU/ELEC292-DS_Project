@@ -1,9 +1,6 @@
 import glob
 import pandas as pd
 
-
-
-
 def preprocess_csv(input_filepath):
     # import csv file as data frame, and interpolate to fill any missing values
     df = pd.read_csv(input_filepath)
