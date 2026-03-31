@@ -21,7 +21,7 @@ def preprocess_csv(input_filepath):
     df['Absolute acceleration (m/s^2)'] = y_sma['Absolute acceleration (m/s^2)']
 
     # delete rows with na at the start resulting from applying sma
-    df_preprocessed = df.dropna()
+    df_processed = df.dropna()
 
     # return the preprocessed data frame
     return df_processed
