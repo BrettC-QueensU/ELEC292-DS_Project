@@ -1,41 +1,56 @@
 import glob
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 
-# Get all CSV files from Brett Jumping Folder
-files = glob.glob('Raw_Data/Brett_RawData/*.csv')
 
-# Preprocessing Brett Data
-for filepath in files:
-    #import csv file as data frame, and interpolate to fill any missing values
-    df = pd.read_csv(filepath)
-    df = df.interpolate(method = 'linear', inPlace = True)
-    df_acc = df.drop(columns = 'Time (s)')
 
-    #use a rolling mean on the data, with a
+
+def preprocess_csv(input_filepath):
+    # import csv file as data frame, and interpolate to fill any missing values
+    df = pd.read_csv(input_filepath)
+    df = df.interpolate(method='linear', inplace=True)
+    df_acc = df.drop(columns='Time (s)')
+
+    # use a rolling mean on the data
     window_size = 21
     y_sma = df_acc.rolling(window_size).mean()
 
-    #replacing the acceleration columns in the data frame with the ones in y_sma
+    # replacing the acceleration columns in the data frame with the ones in y_sma
     df['Linear Acceleration x (m/s^2)'] = y_sma['Linear Acceleration x (m/s^2)']
     df['Linear Acceleration y (m/s^2)'] = y_sma['Linear Acceleration y (m/s^2)']
     df['Linear Acceleration z (m/s^2)'] = y_sma['Linear Acceleration z (m/s^2)']
     df['Absolute acceleration (m/s^2)'] = y_sma['Absolute acceleration (m/s^2)']
 
-    #delete rows with na at the start resulting from applying sma
+    # delete rows with na at the start resulting from applying sma
     df_processed = df.dropna()
 
-    #creating a new csv file with the pre-processed data
-    filename = filepath.split('_RawData/')[1].split("_RawData.csv")[0]
-    df_processed.to_csv('Pre-Processed_Data/Brett/' + filename + '_PreProcessed.csv', index = False)
+    # return the preprocessed data frame
+    return df_processed
 
-#Visualisation used to aid with trial and error of window size
-#time = df['Time (s)']
-#ax = y_sma['Linear Acceleration x (m/s^2)']
-#ay = y_sma['Linear Acceleration y (m/s^2)']
-#az = y_sma['Linear Acceleration z (m/s^2)']
-#aa = y_sma['Absolute acceleration (m/s^2)']
+    # creating a new csv file with the pre-processed data
+    df_processed.to_csv(output_filename + '.csv', index=False)
+
+
+# Preprocessing Brett Data
+files = glob.glob('Raw_Data/Brett_RawData/*.csv')
+for filepath in files:
+    filename = filepath.split('_RawData/')[1].split("_RawData.csv")[0]
+    df_processed_Brett = (preprocess_csv(filepath))
+    df_processed_Brett.to_csv('Pre-Processed_Data/Brett/' + filename + '_PreProcessed.csv', index=False)
+
+# Preprocessing Logan Data
+files = glob.glob('Raw_Data/Logan_data/*/*.csv')
+for filepath in files:
+    filename = filepath.split('Logan_data/')[1].split("/Raw Data")[0]
+    df_processed_Logan = preprocess_csv(filepath)
+    df_processed_Logan.to_csv('Pre-Processed_Data/Logan/' + filename + '_PreProcessed.csv', index=False)
+
+# Preprocessing Vince Data
+files = glob.glob('Raw_Data/Vince_Data/*/*.csv')
+for filepath in files:
+    filename = filepath.split('Vince_Data/')[1].split("/Raw Data")[0]
+    df_processed_Vince = preprocess_csv(filepath)
+    df_processed_Vince.to_csv('Pre-Processed_Data/Vince/' + filename + '_PreProcessed.csv', index=False)
+
 
 #fig, jump = plt.subplots(figsize=(12, 5))
 
@@ -52,5 +67,3 @@ for filepath in files:
 
 #plt.tight_layout()
 #plt.show()
-
-
