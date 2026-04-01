@@ -15,9 +15,9 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 from sklearn.model_selection import learning_curve
+from featureExtraction import extract_features
 
-
-HDF5_PATH = 'dataset.h5'  # ← update to your actual file path
+HDF5_PATH = './hdf5_data.h5'
 ACC_COLS = [
     'Linear Acceleration x (m/s^2)',
     'Linear Acceleration y (m/s^2)',
@@ -25,16 +25,9 @@ ACC_COLS = [
     'Absolute acceleration (m/s^2)',
 ]
 
-
 def load_windows_from_hdf5(hdf5_path, split='Train'):
     # Reads every window stored under  /Segmented data/<split>/
-    # and returns (X, y) where
-    #  X : 2-D numpy array of shape (n_windows, n_features)
-    #  y : 1-D numpy array of labels  (0 = walking, 1 = jumping)
-
-    #Expected HDF5 layout (from Step 2):
-    #  /Segmented data/Train/<label>/<window_dataset>
-    #  /Segmented data/Test/<label>/<window_dataset>
+    # and returns ((n_windows, n_features), (0 = walking or 1 = jumping)) where
     X_list, y_list = [], []
     label_map = {'walking': 0, 'jumping': 1}
 
@@ -50,8 +43,13 @@ def load_windows_from_hdf5(hdf5_path, split='Train'):
             for window_key in label_group:
                 raw = label_group[window_key][:]  # numpy array
 
-                # ── shape handling ────────────────────────────────────────
+                # shape handling
                 # Expect (n_samples, 4).  If stored transposed, flip it.
+                if raw.shape[1] == 5:
+                    raw = raw[:, :4]  # keep first 4 columns
+                elif raw.shape[0] == 5:
+                    raw = raw[:4, :]
+
                 if raw.shape[0] == 4 and raw.ndim == 2:
                     raw = raw.T  # → (n_samples, 4)
 
@@ -73,18 +71,13 @@ def load_windows_from_hdf5(hdf5_path, split='Train'):
     return X, y
 
 
-print('Loading training windows …')
 X_train, y_train = load_windows_from_hdf5(HDF5_PATH, split='Train')
-
-print('Loading test windows …')
 X_test, y_test = load_windows_from_hdf5(HDF5_PATH, split='Test')
 
-# ── 2. Build and train the classifier ────────────────────────────────────────
 # A Pipeline ensures the StandardScaler is fitted ONLY on training data,
 # preventing any data leakage into the test set.
-# (The per-window normalisation in extract_features is a local operation;
-#  this scaler captures global statistics across all training windows.)
-
+# The per-window normalisation in extract_features is a local operation;
+#  this scaler captures global statistics across all training windows.
 clf = make_pipeline(
     StandardScaler(),
     LogisticRegression(max_iter=10_000, random_state=42),
@@ -93,7 +86,7 @@ clf = make_pipeline(
 clf.fit(X_train, y_train)
 print('\nModel trained successfully.')
 
-# ── 3. Evaluate on training and test sets ────────────────────────────────────
+# Evaluate on training and test sets
 
 y_train_pred = clf.predict(X_train)
 y_test_pred = clf.predict(X_test)
@@ -109,8 +102,7 @@ print(f'  Test     accuracy : {test_acc:.4f}  ({test_acc * 100:.1f} %)')
 print(f'  Training recall   : {train_recall:.4f}')
 print(f'  Test     recall   : {test_recall:.4f}')
 
-# ── 4. Learning curves ───────────────────────────────────────────────────────
-# sklearn's learning_curve trains the *same* pipeline at increasing training-
+# sklearn's learning_curve trains the *same* pipeline at increasing training
 # set sizes and records both training and cross-validation accuracy.
 # This is the standard way to produce "training curves" for logistic regression,
 # which has no concept of epochs.
@@ -134,12 +126,12 @@ train_std = train_scores.std(axis=1)
 val_mean = val_scores.mean(axis=1)
 val_std = val_scores.std(axis=1)
 
-# ── 5. Plots ─────────────────────────────────────────────────────────────────
+# Plotting the training
 
 fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 fig.suptitle('Step 6 – Logistic Regression Classification Results', fontsize=14)
 
-# ── 5a. Learning curves ──────────────────────────────────────────────────────
+# Learning Curves
 ax = axes[0]
 ax.set_title('Learning Curves')
 ax.set_xlabel('Training set size')
@@ -162,7 +154,7 @@ ax.set_ylim(0, 1.05)
 ax.legend(loc='lower right')
 ax.grid(True, alpha=0.3)
 
-# ── 5b. Confusion matrix ─────────────────────────────────────────────────────
+#Confusion Matrix
 ax = axes[1]
 ax.set_title(f'Confusion Matrix (Test set)\nAccuracy = {test_acc * 100:.1f} %')
 
@@ -173,7 +165,7 @@ disp = ConfusionMatrixDisplay(
 )
 disp.plot(ax=ax, colorbar=False, cmap='Blues')
 
-# ── 5c. ROC curve ─────────────────────────────────────────────────────────────
+# ROC Curve
 ax = axes[2]
 ax.set_title('ROC Curve (Test set)')
 

@@ -64,10 +64,10 @@ with h5py.File('./hdf5_data.h5', 'w') as hdf:
         G23.create_dataset('jump' + str(i), data=pd.read_csv(vFiles[i - 1]))
 
     # Create HDF5 groups/subgroups for train/test splits
-    G31_walk = hdf.create_group('/Segmented Data/Train/walking')
-    G31_jump = hdf.create_group('/Segmented Data/Train/jumping')
-    G32_walk = hdf.create_group('/Segmented Data/Test/walking')
-    G32_jump = hdf.create_group('/Segmented Data/Test/jumping')
+    G31_walk = hdf.create_group('/Segmented data/Train/walking')
+    G31_jump = hdf.create_group('/Segmented data/Train/jumping')
+    G32_walk = hdf.create_group('/Segmented data/Test/walking')
+    G32_jump = hdf.create_group('/Segmented data/Test/jumping')
 
     all_windows = []  # each entry: (numpy_array, label_string)
 
