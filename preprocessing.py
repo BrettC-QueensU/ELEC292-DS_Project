@@ -3,7 +3,7 @@ import pandas as pd
 
 def preprocess_csv(df: pd.DataFrame):
     # import csv file as data frame, and interpolate to fill any missing values
-    df = df.interpolate(method='linear', inplace=True)
+    df = df.interpolate(method='linear')
     df_acc = df.drop(columns='Time (s)')
 
     # use a rolling mean on the data
