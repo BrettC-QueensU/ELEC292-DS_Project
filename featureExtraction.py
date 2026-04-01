@@ -4,7 +4,7 @@ from sklearn.preprocessing import StandardScaler
 # UNSURE IF FEATURES MUST BE UNIQUE. e.x.:
 # whether x-acc mean and y-acc mean counts as 1 feature (mean) or two features, (mean of x acc, mean of y acc)
 
-# Extracts 10+ features from an inputted data-frame and normalizes data.
+# Extracts 10+ features from an inputted data-frame
 # Treats the inputted df as a single window to extract data from
 # features extracted: max, min, range, mean, median, variance, skewness, kurtosis, std, mode
 def extract_features(input_df):
@@ -44,16 +44,11 @@ def extract_features(input_df):
         features.append(s.skew())
         features.append(s.kurt())
         features.append(s.std())
-        features.append(s.mode())
+        features.append(s.mode()[0])
 
     feature_df = pd.DataFrame([features], columns=labels)
 
-    # normalize features using z-score standardization
-    scaler = StandardScaler()
-    feature_df_normalized = pd.DataFrame(
-        scaler.fit_transform(feature_df.T).T,
-        columns=labels
-    )
+    # Normalization is done in the logisticRegression.py file
 
-    return feature_df_normalized
+    return feature_df
 
