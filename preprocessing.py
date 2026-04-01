@@ -1,7 +1,7 @@
 import glob
 import pandas as pd
 
-def preprocess_csv(df):
+def preprocess_csv(df: pd.DataFrame):
     # import csv file as data frame, and interpolate to fill any missing values
     df = df.interpolate(method='linear', inplace=True)
     df_acc = df.drop(columns='Time (s)')
@@ -30,21 +30,21 @@ def preprocess_csv(df):
 files = glob.glob('Raw_Data/Brett_RawData/*.csv')
 for filepath in files:
     filename = filepath.split('_RawData\\')[1].split("_RawData.csv")[0]
-    df_processed_Brett = (preprocess_csv(filepath))
+    df_processed_Brett = (preprocess_csv(pd.read_csv(filepath)))
     df_processed_Brett.to_csv('Pre-Processed_Data/Brett/' + filename + '_PreProcessed.csv', index=False)
 
 # Preprocessing Logan Data
 files = glob.glob('Raw_Data/Logan_data/*/Raw Data.csv')
 for filepath in files:
     filename = filepath.split('Logan_data\\')[1].split("\\Raw Data")[0]
-    df_processed_Logan = preprocess_csv(filepath)
+    df_processed_Logan = preprocess_csv((pd.read_csv(filepath)))
     df_processed_Logan.to_csv('Pre-Processed_Data/Logan/' + filename + '_PreProcessed.csv', index=False)
 
 # Preprocessing Vince Data
 files = glob.glob('Raw_Data/Vince_Data/*/Raw Data.csv')
 for filepath in files:
     filename = filepath.split('Vince_Data\\')[1].split("\\Raw Data")[0]
-    df_processed_Vince = preprocess_csv(filepath)
+    df_processed_Vince = preprocess_csv((pd.read_csv(filepath)))
     df_processed_Vince.to_csv('Pre-Processed_Data/Vince/' + filename + '_PreProcessed.csv', index=False)
 
 
