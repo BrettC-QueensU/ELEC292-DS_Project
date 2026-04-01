@@ -1,3 +1,5 @@
 .DS_Store
 .idea/PythonProject.iml
 *.pyc
+*.xml
+*.iml
