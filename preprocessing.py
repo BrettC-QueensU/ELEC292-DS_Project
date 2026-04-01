@@ -1,11 +1,10 @@
 import glob
 import pandas as pd
 
-def preprocess_csv(input_filepath):
+def preprocess_csv(df):
     # import csv file as data frame, and interpolate to fill any missing values
-    df = pd.read_csv(input_filepath)
     df = df.interpolate(method='linear', inplace=True)
-    df_acc = df.iloc[:, 1:]
+    df_acc = df.drop(columns='Time (s)')
 
     # use a rolling mean on the data
     window_size = 21
