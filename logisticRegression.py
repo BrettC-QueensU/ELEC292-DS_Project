@@ -13,6 +13,7 @@ from sklearn.metrics import (
     ConfusionMatrixDisplay,
     roc_curve,
     roc_auc_score,
+    RocCurveDisplay
 )
 from sklearn.model_selection import learning_curve
 from featureExtraction import extract_features
@@ -28,7 +29,7 @@ ACC_COLS = [
 def load_windows_from_hdf5(hdf5_path, split='Train'):
     # Reads every window stored under  /Segmented data/<split>/
     # and returns ((n_windows, n_features), (0 = walking or 1 = jumping)) where
-    X_list, y_list = [], []
+    x_list, y_list = [], []
     label_map = {'walking': 0, 'jumping': 1}
 
     with h5py.File(hdf5_path, 'r') as f:
@@ -61,10 +62,10 @@ def load_windows_from_hdf5(hdf5_path, split='Train'):
                 )
 
                 feat_row = extract_features(window_df)  # shape (1, 40)
-                X_list.append(feat_row.values[0])
+                x_list.append(feat_row.values[0])
                 y_list.append(label_int)
 
-    X = np.array(X_list, dtype=float)
+    X = np.array(x_list, dtype=float)
     y = np.array(y_list, dtype=int)
     print(f'  Loaded {split}: {X.shape[0]} windows  '
           f'(walking={np.sum(y == 0)}, jumping={np.sum(y == 1)})')
@@ -86,26 +87,18 @@ clf = make_pipeline(
 clf.fit(X_train, y_train)
 print('\nModel trained successfully.')
 
-# Evaluate on training and test sets
-
-y_train_pred = clf.predict(X_train)
+# Evaluate on test sets
 y_test_pred = clf.predict(X_test)
-
-train_acc = accuracy_score(y_train, y_train_pred)
 test_acc = accuracy_score(y_test, y_test_pred)
-train_recall = recall_score(y_train, y_train_pred)
 test_recall = recall_score(y_test, y_test_pred)
 
 print(f'\n--- Classification Results ---')
-print(f'  Training accuracy : {train_acc:.4f}  ({train_acc * 100:.1f} %)')
 print(f'  Test     accuracy : {test_acc:.4f}  ({test_acc * 100:.1f} %)')
-print(f'  Training recall   : {train_recall:.4f}')
 print(f'  Test     recall   : {test_recall:.4f}')
 
 # sklearn's learning_curve trains the *same* pipeline at increasing training
 # set sizes and records both training and cross-validation accuracy.
 # This is the standard way to produce "training curves" for logistic regression,
-# which has no concept of epochs.
 
 print('\nComputing learning curves (this may take a moment) …')
 
@@ -165,15 +158,22 @@ disp = ConfusionMatrixDisplay(
 )
 disp.plot(ax=ax, colorbar=False, cmap='Blues')
 
-# ROC Curve
+# ROC Curve (use third subplot)
 ax = axes[2]
 ax.set_title('ROC Curve (Test set)')
 
-y_test_prob = clf.predict_proba(X_test)[:, 1]  # probability of 'jumping'
-fpr, tpr, _ = roc_curve(y_test, y_test_prob, pos_label=1)
-auc_score = roc_auc_score(y_test, y_test_prob)
+# Get probabilities for the positive class ONLY
+y_test_prob = clf.predict_proba(X_test)[:, 1]
 
-ax.plot(fpr, tpr, color='royalblue', lw=2, label=f'AUC = {auc_score:.3f}')
+# Compute ROC + AUC
+fpr, tpr, _ = roc_curve(y_test, y_test_prob)
+auc_score = roc_auc_score(y_test, y_test_prob)
+print(f'AUC : {auc_score:.4f}')
+
+# Plot ROC
+disp = RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=auc_score)
+disp.plot(ax=ax, curve_kwargs={'color': 'royalblue'})
+
 ax.plot([0, 1], [0, 1], 'k--', lw=1, label='Random classifier')
 ax.set_xlabel('False Positive Rate')
 ax.set_ylabel('True Positive Rate')
@@ -182,8 +182,7 @@ ax.set_ylim(0, 1.02)
 ax.legend(loc='lower right')
 ax.grid(True, alpha=0.3)
 
+
 plt.tight_layout()
 plt.savefig('step6_results.png', dpi=150, bbox_inches='tight')
 plt.show()
-print('\nPlot saved to step6_results.png')
-print(f'AUC : {auc_score:.4f}')

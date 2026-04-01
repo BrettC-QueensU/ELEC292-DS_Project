@@ -44,12 +44,11 @@ def extract_features(input_df):
         features.append(s.skew())
         features.append(s.kurt())
         features.append(s.std())
-        features.append(s.mode())
+        features.append(s.mode()[0])
 
     feature_df = pd.DataFrame([features], columns=labels)
 
     # Normalization is done in the logisticRegression.py file
-
 
     return feature_df
 
