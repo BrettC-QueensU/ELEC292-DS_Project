@@ -1,124 +1,197 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import pickle
 import h5py
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
-from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
-from sklearn.metrics import accuracy_score,recall_score
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-from sklearn.metrics import roc_curve, RocCurveDisplay, roc_auc_score
+from sklearn.metrics import (
+    accuracy_score,
+    recall_score,
+    confusion_matrix,
+    ConfusionMatrixDisplay,
+    roc_curve,
+    roc_auc_score,
+)
 from sklearn.model_selection import learning_curve
 
 
-# ── Load features and labels from the HDF5 file ───────────────────────────────
-with h5py.File('dataset.h5', 'r') as f:
-    X_train     = f['segmented_data/train/features'][:]
-    y_train_raw = f['segmented_data/train/labels'][:]
-    X_test      = f['segmented_data/test/features'][:]
-    y_test_raw  = f['segmented_data/test/labels'][:]
-
-# HDF5 stores strings as bytes - decode if necessary
-y_train_raw = np.array([lbl.decode('utf-8') if isinstance(lbl, bytes) else str(lbl) for lbl in y_train_raw])
-y_test_raw  = np.array([lbl.decode('utf-8') if isinstance(lbl, bytes) else str(lbl) for lbl in y_test_raw])
+HDF5_PATH = 'dataset.h5'  # ← update to your actual file path
+ACC_COLS = [
+    'Linear Acceleration x (m/s^2)',
+    'Linear Acceleration y (m/s^2)',
+    'Linear Acceleration z (m/s^2)',
+    'Absolute acceleration (m/s^2)',
+]
 
 
-# ── Encode string labels into integers ────────────────────────────────────────
-# e.g. "jumping" --> 0, "walking" --> 1
-le = LabelEncoder()
-le.fit(np.concatenate([y_train_raw, y_test_raw]))
-y_train = le.transform(y_train_raw)
-y_test  = le.transform(y_test_raw)
+def load_windows_from_hdf5(hdf5_path, split='Train'):
+    # Reads every window stored under  /Segmented data/<split>/
+    # and returns (X, y) where
+    #  X : 2-D numpy array of shape (n_windows, n_features)
+    #  y : 1-D numpy array of labels  (0 = walking, 1 = jumping)
+
+    #Expected HDF5 layout (from Step 2):
+    #  /Segmented data/Train/<label>/<window_dataset>
+    #  /Segmented data/Test/<label>/<window_dataset>
+    X_list, y_list = [], []
+    label_map = {'walking': 0, 'jumping': 1}
+
+    with h5py.File(hdf5_path, 'r') as f:
+        split_group = f[f'Segmented data/{split}']
+
+        for label_name, label_int in label_map.items():
+            if label_name not in split_group:
+                print(f'  [WARNING] label "{label_name}" not found in {split} split — skipping.')
+                continue
+
+            label_group = split_group[label_name]
+            for window_key in label_group:
+                raw = label_group[window_key][:]  # numpy array
+
+                # ── shape handling ────────────────────────────────────────
+                # Expect (n_samples, 4).  If stored transposed, flip it.
+                if raw.shape[0] == 4 and raw.ndim == 2:
+                    raw = raw.T  # → (n_samples, 4)
+
+                # Build a DataFrame with axes as the INDEX so extract_features
+                # can call input_df.loc['Linear Acceleration x (m/s^2)'] etc.
+                window_df = pd.DataFrame(
+                    raw.T,  # shape (4, n_samples)
+                    index=ACC_COLS,
+                )
+
+                feat_row = extract_features(window_df)  # shape (1, 40)
+                X_list.append(feat_row.values[0])
+                y_list.append(label_int)
+
+    X = np.array(X_list, dtype=float)
+    y = np.array(y_list, dtype=int)
+    print(f'  Loaded {split}: {X.shape[0]} windows  '
+          f'(walking={np.sum(y == 0)}, jumping={np.sum(y == 1)})')
+    return X, y
 
 
-# ── Define and train the classifier pipeline ──────────────────────────────────
-# StandardScaler normalizes the features, LogisticRegression is the classifier
-# Using make_pipeline ensures the scaler is only fit on training data,
-# preventing data leakage into the test set
-l_reg = LogisticRegression(max_iter=10000)
-clf   = make_pipeline(StandardScaler(), l_reg)
+print('Loading training windows …')
+X_train, y_train = load_windows_from_hdf5(HDF5_PATH, split='Train')
+
+print('Loading test windows …')
+X_test, y_test = load_windows_from_hdf5(HDF5_PATH, split='Test')
+
+# ── 2. Build and train the classifier ────────────────────────────────────────
+# A Pipeline ensures the StandardScaler is fitted ONLY on training data,
+# preventing any data leakage into the test set.
+# (The per-window normalisation in extract_features is a local operation;
+#  this scaler captures global statistics across all training windows.)
+
+clf = make_pipeline(
+    StandardScaler(),
+    LogisticRegression(max_iter=10_000, random_state=42),
+)
 
 clf.fit(X_train, y_train)
+print('\nModel trained successfully.')
 
+# ── 3. Evaluate on training and test sets ────────────────────────────────────
 
-# ── Obtaining the predictions and the probabilities ───────────────────────────
-y_pred     = clf.predict(X_test)
-y_clf_prob = clf.predict_proba(X_test)  # y_clf_prob[:, 1] is the probability of the positive class for each sample
+y_train_pred = clf.predict(X_train)
+y_test_pred = clf.predict(X_test)
 
+train_acc = accuracy_score(y_train, y_train_pred)
+test_acc = accuracy_score(y_test, y_test_pred)
+train_recall = recall_score(y_train, y_train_pred)
+test_recall = recall_score(y_test, y_test_pred)
 
-# ── Obtaining the classification accuracy and recall ─────────────────────────
-acc       = accuracy_score(y_test, y_pred)
-train_acc = accuracy_score(y_train, clf.predict(X_train))
-recall    = recall_score(y_test, y_pred)
+print(f'\n--- Classification Results ---')
+print(f'  Training accuracy : {train_acc:.4f}  ({train_acc * 100:.1f} %)')
+print(f'  Test     accuracy : {test_acc:.4f}  ({test_acc * 100:.1f} %)')
+print(f'  Training recall   : {train_recall:.4f}')
+print(f'  Test     recall   : {test_recall:.4f}')
 
-print(f'train accuracy is: {train_acc:.4f}')
-print(f'accuracy is: {acc:.4f}')
-print(f'recall is: {recall:.4f}')
+# ── 4. Learning curves ───────────────────────────────────────────────────────
+# sklearn's learning_curve trains the *same* pipeline at increasing training-
+# set sizes and records both training and cross-validation accuracy.
+# This is the standard way to produce "training curves" for logistic regression,
+# which has no concept of epochs.
 
+print('\nComputing learning curves (this may take a moment) …')
 
-# ── Plotting the confusion matrix ─────────────────────────────────────────────
-cm         = confusion_matrix(y_test, y_pred)
-cm_display = ConfusionMatrixDisplay(cm, display_labels=le.classes_)
-
-fig, ax = plt.subplots()
-cm_display.plot(ax=ax, colorbar=False, cmap='Blues')
-ax.set_title('Confusion Matrix - Test Set')
-plt.tight_layout()
-plt.savefig('plots/confusion_matrix.png', dpi=150)
-plt.show()
-
-
-# ── Plotting the ROC curve ────────────────────────────────────────────────────
-fpr, tpr, _ = roc_curve(y_test, y_clf_prob[:, 1], pos_label=clf.classes_[1])
-roc_display  = RocCurveDisplay(fpr=fpr, tpr=tpr)
-
-fig, ax = plt.subplots()
-roc_display.plot(ax=ax)
-ax.set_title('ROC Curve - Test Set')
-plt.tight_layout()
-plt.savefig('plots/roc_curve.png', dpi=150)
-plt.show()
-
-auc = roc_auc_score(y_test, y_clf_prob[:, 1])
-print(f'the AUC is: {auc:.4f}')
-
-
-# ── Learning curves ───────────────────────────────────────────────────────────
 train_sizes, train_scores, val_scores = learning_curve(
-    estimator   = make_pipeline(StandardScaler(), LogisticRegression(max_iter=10000)),
-    X           = X_train,
-    y           = y_train,
-    train_sizes = np.linspace(0.1, 1.0, 10),
-    cv          = 5,
-    scoring     = 'accuracy',
-    n_jobs      = -1,
+    estimator=clf,
+    X=X_train,
+    y=y_train,
+    train_sizes=np.linspace(0.1, 1.0, 10),
+    cv=5,  # 5-fold cross-validation
+    scoring='accuracy',
+    n_jobs=-1,
+    shuffle=True,
+    random_state=42,
 )
 
 train_mean = train_scores.mean(axis=1)
-train_std  = train_scores.std(axis=1)
-val_mean   = val_scores.mean(axis=1)
-val_std    = val_scores.std(axis=1)
+train_std = train_scores.std(axis=1)
+val_mean = val_scores.mean(axis=1)
+val_std = val_scores.std(axis=1)
 
-fig, ax = plt.subplots(figsize=(8, 5))
-ax.plot(train_sizes, train_mean, 'o-', color='royalblue',  label='Training accuracy')
-ax.plot(train_sizes, val_mean,   's-', color='darkorange', label='CV accuracy')
-ax.fill_between(train_sizes, train_mean - train_std, train_mean + train_std, alpha=0.15, color='royalblue')
-ax.fill_between(train_sizes, val_mean - val_std, val_mean + val_std, alpha=0.15, color='darkorange')
-ax.axhline(y=acc, linestyle='--', color='green', label=f'Final test accuracy ({acc * 100:.1f} %)')
-ax.set_xlabel('Training set size (windows)')
+# ── 5. Plots ─────────────────────────────────────────────────────────────────
+
+fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+fig.suptitle('Step 6 – Logistic Regression Classification Results', fontsize=14)
+
+# ── 5a. Learning curves ──────────────────────────────────────────────────────
+ax = axes[0]
+ax.set_title('Learning Curves')
+ax.set_xlabel('Training set size')
 ax.set_ylabel('Accuracy')
-ax.set_title('Learning Curves - Logistic Regression')
-ax.legend()
+
+ax.plot(train_sizes, train_mean, 'o-', color='royalblue', label='Training accuracy')
+ax.fill_between(train_sizes,
+                train_mean - train_std,
+                train_mean + train_std,
+                alpha=0.15, color='royalblue')
+
+ax.plot(train_sizes, val_mean, 's--', color='darkorange', label='CV accuracy (validation)')
+ax.fill_between(train_sizes,
+                val_mean - val_std,
+                val_mean + val_std,
+                alpha=0.15, color='darkorange')
+
+ax.axhline(y=0.5, color='gray', linestyle=':', linewidth=1, label='Chance level (50 %)')
+ax.set_ylim(0, 1.05)
+ax.legend(loc='lower right')
 ax.grid(True, alpha=0.3)
+
+# ── 5b. Confusion matrix ─────────────────────────────────────────────────────
+ax = axes[1]
+ax.set_title(f'Confusion Matrix (Test set)\nAccuracy = {test_acc * 100:.1f} %')
+
+cm = confusion_matrix(y_test, y_test_pred)
+disp = ConfusionMatrixDisplay(
+    confusion_matrix=cm,
+    display_labels=['Walking', 'Jumping'],
+)
+disp.plot(ax=ax, colorbar=False, cmap='Blues')
+
+# ── 5c. ROC curve ─────────────────────────────────────────────────────────────
+ax = axes[2]
+ax.set_title('ROC Curve (Test set)')
+
+y_test_prob = clf.predict_proba(X_test)[:, 1]  # probability of 'jumping'
+fpr, tpr, _ = roc_curve(y_test, y_test_prob, pos_label=1)
+auc_score = roc_auc_score(y_test, y_test_prob)
+
+ax.plot(fpr, tpr, color='royalblue', lw=2, label=f'AUC = {auc_score:.3f}')
+ax.plot([0, 1], [0, 1], 'k--', lw=1, label='Random classifier')
+ax.set_xlabel('False Positive Rate')
+ax.set_ylabel('True Positive Rate')
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1.02)
+ax.legend(loc='lower right')
+ax.grid(True, alpha=0.3)
+
 plt.tight_layout()
-plt.savefig('plots/learning_curves.png', dpi=150)
+plt.savefig('step6_results.png', dpi=150, bbox_inches='tight')
 plt.show()
-
-
-# ── Save the trained model and label encoder ──────────────────────────────────
-# Saved as a pickle file so the desktop app (app.py) can load it
-with open('logistic_model.pkl', 'wb') as file:
-    pickle.dump({'model': clf, 'label_encoder': le}, file)
-
-print('Model saved --> logistic_model.pkl')
+print('\nPlot saved to step6_results.png')
+print(f'AUC : {auc_score:.4f}')
