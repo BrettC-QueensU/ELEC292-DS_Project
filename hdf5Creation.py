@@ -5,29 +5,7 @@ import pandas as pd
 import h5py
 import glob
 
-# helper function to split one pre-processed dataframe into approximately 5-second windows,
-# If there are at least 4 seconds of data remaining after the final full 5-second window,
-# Then saves one last window.
-def segment_dataframe(df):
-    times = df.iloc[:, 0].values
-    sample_period = float(np.median(np.diff(times)))
-    samples_per_window = int(round(5 / sample_period))
-    min_samples = int(round(4 / sample_period))  # minimum samples for a 4-second window
-
-    n_complete = len(df) // samples_per_window  # number of full windows
-    windows = []
-    for i in range(n_complete):
-        start = i * samples_per_window
-        end = start + samples_per_window
-        windows.append(df.iloc[start:end].reset_index(drop=True))
-
-    # Check if the remaining samples form at least a 4-second window
-    remainder_start = n_complete * samples_per_window
-    remainder = df.iloc[remainder_start:]
-    if len(remainder) >= min_samples:
-        windows.append(remainder.reset_index(drop=True))
-
-    return windows
+from featureExtraction import segment_dataframe
 
 
 #Create a new hdf5 file with the name hdf5_data.h5 in write mode
@@ -37,6 +15,10 @@ with h5py.File('./hdf5_data.h5', 'w') as hdf:
     G12 = hdf.create_group('/Raw Data/Logan')
     G13 = hdf.create_group('/Raw Data/Vince')
 
+    # Getting paths for raw files
+    bFilesWalk, bFilesJump = sorted(glob.glob('Raw_Data/Brett_RawData/*Walk*.csv')), sorted(glob.glob('Raw_Data/Brett_RawData/*Jump*.csv'))
+    lFilesWalk, lFilesJump = sorted(glob.glob('Raw_Data/Logan_data/*/*.csv')), sorted
+
     # create datasets with all of Brett's raw data under subgroup Brett
     for i in range(1, 6):
         G11.create_dataset('walking' + str(i), data=pd.read_csv(f'Raw_Data/Brett_RawData/Walk-' + str(i) + '_RawData.csv'))
@@ -44,7 +26,7 @@ with h5py.File('./hdf5_data.h5', 'w') as hdf:
 
     # create datasets with all of Logan's raw data under subgroup Logan
     # Sorting files into alphhabetical order to ensure consistency with labels for data with preprocessing later
-    lFiles = sorted(glob.glob('Raw_Data/Logan_data/*/*.csv'))
+    lFiles =
     for i in range(1, 6):
         G12.create_dataset('walking' + str(i), data=pd.read_csv(lFiles[i + 4]))
         G12.create_dataset('jumping' + str(i), data=pd.read_csv(lFiles[i - 1]))

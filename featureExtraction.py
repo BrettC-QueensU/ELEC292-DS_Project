@@ -52,3 +52,26 @@ def extract_features(input_df):
 
     return feature_df
 
+# helper function to split one pre-processed dataframe into approximately 5-second windows,
+# If there are at least 4 seconds of data remaining after the final full 5-second window,
+# Then saves one last window.
+def segment_dataframe(df):
+    times = df.iloc[:, 0].values
+    sample_period = float(np.median(np.diff(times)))
+    samples_per_window = int(round(5 / sample_period))
+    min_samples = int(round(4 / sample_period))  # minimum samples for a 4-second window
+
+    n_complete = len(df) // samples_per_window  # number of full windows
+    windows = []
+    for i in range(n_complete):
+        start = i * samples_per_window
+        end = start + samples_per_window
+        windows.append(df.iloc[start:end].reset_index(drop=True))
+
+    # Check if the remaining samples form at least a 4-second window
+    remainder_start = n_complete * samples_per_window
+    remainder = df.iloc[remainder_start:]
+    if len(remainder) >= min_samples:
+        windows.append(remainder.reset_index(drop=True))
+
+    return windows

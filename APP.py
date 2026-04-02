@@ -1,5 +1,5 @@
-#import matplotlib
-#matplotlib.use('Agg')   # non-interactive backend (safe before any Qt import)
+import matplotlib
+matplotlib.use('Agg')   # non-interactive backend (safe before any Qt import)
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -19,9 +19,9 @@ from PyQt5.QtGui import QPixmap, QFont, QColor, QPalette
 from PyQt5.QtCore import Qt
 
 from preprocessing import preprocess_csv
-from featureExtraction import extract_features
+from featureExtraction import extract_features, segment_dataframe
 
-# ─── Constants ───────────────────────────────────────────────────────────────
+# Constants
 
 MODEL_PATH = './trained_model.pkl'
 
@@ -37,29 +37,7 @@ WINDOW_COLORS = {
     'jumping': '#F1948A',   # soft red
 }
 
-# ─── Helpers ─────────────────────────────────────────────────────────────────
-
-def segment_dataframe(df):
-    """Split a preprocessed DataFrame into ~5-second windows.
-
-    Returns
-    -------
-    windows : list[DataFrame]   each window as a DataFrame
-    samples_per_window : int
-    """
-    times = df['Time (s)'].values
-    sample_period = float(np.median(np.diff(times)))
-    samples_per_window = max(1, int(round(5.0 / sample_period)))
-
-    n_complete = len(df) // samples_per_window
-    windows = []
-    for i in range(n_complete):
-        start = i * samples_per_window
-        end   = start + samples_per_window
-        windows.append(df.iloc[start:end].reset_index(drop=True))
-    return windows, samples_per_window
-
-
+# Helpers
 def load_model():
     """Load the pre-trained sklearn pipeline from disk."""
     if not os.path.exists(MODEL_PATH):
@@ -112,7 +90,7 @@ def make_comparison_plot(raw_df, processed_df, windows, labels, save_path='class
         ('Linear Acceleration z (m/s^2)', 'Z', 'tab:green'),
     ]
 
-    # ── Raw panel ────────────────────────────────────────────────────────
+    # Raw panel
     t_raw = raw_df['Time (s)']
     for col, lbl, clr in axis_styles:
         ax_raw.plot(t_raw, raw_df[col], label=lbl, color=clr, linewidth=1.0, alpha=0.85)
@@ -122,7 +100,7 @@ def make_comparison_plot(raw_df, processed_df, windows, labels, save_path='class
     ax_raw.grid(True, linestyle='--', alpha=0.4)
     ax_raw.legend(title='Axis', fontsize=9, loc='upper right')
 
-    # ── Preprocessed panel ───────────────────────────────────────────────
+    # Preprocessed panel
     t_proc = processed_df['Time (s)']
     for col, lbl, clr in axis_styles:
         ax_proc.plot(t_proc, processed_df[col], label=lbl, color=clr, linewidth=1.0, alpha=0.85)
@@ -133,7 +111,7 @@ def make_comparison_plot(raw_df, processed_df, windows, labels, save_path='class
     ax_proc.grid(True, linestyle='--', alpha=0.4)
     ax_proc.legend(title='Axis', fontsize=9, loc='upper right')
 
-    # ── Window bands on both panels ──────────────────────────────────────
+    # Window bands on both panels
     for ax in (ax_raw, ax_proc):
         y_min, y_max = ax.get_ylim()
         for i, (window, label) in enumerate(zip(windows, labels)):
@@ -151,7 +129,7 @@ def make_comparison_plot(raw_df, processed_df, windows, labels, save_path='class
                     bbox=dict(boxstyle='round,pad=0.15', fc=color,
                               ec='none', alpha=0.6))
 
-    # ── Shared legend for window classes ─────────────────────────────────
+    # Shared legend for window classes
     walk_patch = mpatches.Patch(facecolor=WINDOW_COLORS['walking'], alpha=0.5,
                                 edgecolor='none', label='Walking (W)')
     jump_patch = mpatches.Patch(facecolor=WINDOW_COLORS['jumping'],  alpha=0.5,
@@ -165,7 +143,7 @@ def make_comparison_plot(raw_df, processed_df, windows, labels, save_path='class
     plt.close(fig)
 
 
-# ─── Tab 1: Home ─────────────────────────────────────────────────────────────
+# Tab 1: Home
 
 class HomeTab(QWidget):
     def __init__(self):
@@ -173,14 +151,14 @@ class HomeTab(QWidget):
         self._output_df    = None   # labeled DataFrame ready for download
         self._result_image = 'classification_result.png'
 
-        # ── Load model once ──────────────────────────────────────────────
+        # Load model once
         self._clf = None
         try:
             self._clf = load_model()
         except FileNotFoundError as e:
             pass   # show error to user only when they actually upload a file
 
-        # ── Layout ──────────────────────────────────────────────────────
+        # Layout
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 16, 16, 16)
         root.setSpacing(12)
@@ -232,7 +210,7 @@ class HomeTab(QWidget):
 
         root.addLayout(btn_row)
 
-    # ── Slots ────────────────────────────────────────────────────────────
+    # Slots
 
     def _on_upload(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -249,7 +227,7 @@ class HomeTab(QWidget):
                 QMessageBox.critical(self, "Model not found", str(e))
                 return
 
-        # ── Pipeline ─────────────────────────────────────────────────────
+        # Pipeline
         try:
             raw_df = pd.read_csv(path)
 
@@ -324,7 +302,7 @@ class HomeTab(QWidget):
         super().resizeEvent(event)
 
 
-# ─── Tab 2: Image Gallery ────────────────────────────────────────────────────
+# Tab 2: Image Gallery
 
 class ImageViewer(QMainWindow):
     def __init__(self, path, parent=None):
@@ -411,7 +389,7 @@ class ImageGalleryTab(QWidget):
         self._viewers.append(viewer)
 
 
-# ─── Main Window ─────────────────────────────────────────────────────────────
+# Main Window
 
 class MainWindow(QMainWindow):
     def __init__(self):
