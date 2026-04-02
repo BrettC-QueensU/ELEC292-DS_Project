@@ -55,7 +55,7 @@ def segment_dataframe(df):
     times = df.iloc[:, 0].values
     sample_period = float(np.median(np.diff(times)))
     samples_per_window = int(round(5 / sample_period))
-    min_samples = int(round(4 / sample_period))  # minimum samples for a 4.25-second window
+    min_samples = int(round(4 / sample_period))  # minimum samples for a 4-second window
     trim_samples = int(round(0.25 / sample_period))  # 0.25 seconds to remove from last window if shorter window
 
     n_complete = len(df) // samples_per_window  # number of full windows
