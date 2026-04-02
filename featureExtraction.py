@@ -1,9 +1,6 @@
 import pandas as pd
 import numpy as np
 
-# UNSURE IF FEATURES MUST BE UNIQUE. e.x.:
-# whether x-acc mean and y-acc mean counts as 1 feature (mean) or two features, (mean of x acc, mean of y acc)
-
 # Extracts 10+ features from an inputted data-frame
 # Treats the inputted df as a single window to extract data from
 # features extracted: max, min, range, mean, median, variance, skewness, kurtosis, std, mode
