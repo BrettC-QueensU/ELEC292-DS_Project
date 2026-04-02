@@ -15,10 +15,6 @@ with h5py.File('./hdf5_data.h5', 'w') as hdf:
     G12 = hdf.create_group('/Raw Data/Logan')
     G13 = hdf.create_group('/Raw Data/Vince')
 
-    # Getting paths for raw files
-    bFilesWalk, bFilesJump = sorted(glob.glob('Raw_Data/Brett_RawData/*Walk*.csv')), sorted(glob.glob('Raw_Data/Brett_RawData/*Jump*.csv'))
-    lFilesWalk, lFilesJump = sorted(glob.glob('Raw_Data/Logan_data/*/*.csv')), sorted
-
     # create datasets with all of Brett's raw data under subgroup Brett
     for i in range(1, 6):
         G11.create_dataset('walking' + str(i), data=pd.read_csv(f'Raw_Data/Brett_RawData/Walk-' + str(i) + '_RawData.csv'))
@@ -26,7 +22,7 @@ with h5py.File('./hdf5_data.h5', 'w') as hdf:
 
     # create datasets with all of Logan's raw data under subgroup Logan
     # Sorting files into alphhabetical order to ensure consistency with labels for data with preprocessing later
-    lFiles =
+    lFiles = sorted(glob.glob('Raw_Data/Logan_data/*/*.csv'))
     for i in range(1, 6):
         G12.create_dataset('walking' + str(i), data=pd.read_csv(lFiles[i + 4]))
         G12.create_dataset('jumping' + str(i), data=pd.read_csv(lFiles[i - 1]))
@@ -107,30 +103,3 @@ with h5py.File('./hdf5_data.h5', 'w') as hdf:
 
     save_windows(train_idx, 'Train')
     save_windows(test_idx, 'Test')
-
-    #lastly, create group segmented data with subgroups train and test
-    #iterate through the pre processed data and resample each file into a
-    ##dataframe with 5 second intervals.
-    #Group = hdf.get('Pre-Processed Data')
-    #ls = list(Group.keys())
-    #print(ls)
-    #all_data = [] #stores an array with all the 5 second splits
-    #for sg in ls:
-    #    files = list(Group.get(sg).keys())
-    #    print(files)
-    #    for file in files:
-    #        data = Group.get(sg).get(file)
-    #        data = np.array(data)
-    #        df = pd.DataFrame(data[:, 0], columns=['value'])
-    #        df.index = pd.to_datetime(data[:, 0], unit='s')
-    #        windowed = df['value'].resample('5s').mean()
-    #        all_data.append(windowed)
-    #combined = pd.concat(all_data).dropna()
-#
-    #train_df, test_df = train_test_split(combined, test_size=0.1, shuffle=True, random_state=42)
-#
-    #G31 = hdf.create_group('/Segmented Data/Train')
-    #G31.create_dataset('Train', data = train_df)
-    #G32 = hdf.create_group('/Segmented Data/Test')
-    #G32.create_dataset('Test', data = test_df)
-#

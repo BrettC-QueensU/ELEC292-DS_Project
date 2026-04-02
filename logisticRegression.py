@@ -68,30 +68,28 @@ def load_windows_from_hdf5(hdf5_path, split='Train'):
                 x_list.append(feat_row.values[0])
                 y_list.append(label_int)
 
-    X = np.array(x_list, dtype=float)
+    x = np.array(x_list, dtype=float)
     y = np.array(y_list, dtype=int)
-    print(f'  Loaded {split}: {X.shape[0]} windows  '
-          f'(walking={np.sum(y == 0)}, jumping={np.sum(y == 1)})')
-    return X, y
+    return x, y
 
 
 def train_and_save_model():
     """Train the logistic regression pipeline and persist it to MODEL_PATH."""
     print('Loading training windows …')
-    X_train, y_train = load_windows_from_hdf5(HDF5_PATH, split='Train')
-    X_test,  y_test  = load_windows_from_hdf5(HDF5_PATH, split='Test')
+    x_train, y_train = load_windows_from_hdf5(HDF5_PATH, split='Train')
+    x_test,  y_test  = load_windows_from_hdf5(HDF5_PATH, split='Test')
 
     # Pipeline: StandardScaler fitted on training data only (no leakage)
     clf = make_pipeline(
         StandardScaler(),
-        LogisticRegression(max_iter=10_000, random_state=42),
+        LogisticRegression(max_iter=10000, random_state=42),
     )
 
-    clf.fit(X_train, y_train)
+    clf.fit(x_train, y_train)
     print('\nModel trained successfully.')
 
     # Evaluate
-    y_test_pred = clf.predict(X_test)
+    y_test_pred = clf.predict(x_test)
     test_acc    = accuracy_score(y_test, y_test_pred)
     test_recall = recall_score(y_test, y_test_pred)
 
@@ -103,7 +101,7 @@ def train_and_save_model():
     print('\nComputing learning curves …')
     train_sizes, train_scores, val_scores = learning_curve(
         estimator   = clf,
-        X           = X_train,
+        X           = x_train,
         y           = y_train,
         train_sizes = np.linspace(0.1, 1.0, 10),
         cv          = 5,
@@ -148,7 +146,7 @@ def train_and_save_model():
     # ROC Curve
     ax = axes[2]
     ax.set_title('ROC Curve (Test set)')
-    y_test_prob = clf.predict_proba(X_test)[:, 1]
+    y_test_prob = clf.predict_proba(x_test)[:, 1]
     fpr, tpr, _ = roc_curve(y_test, y_test_prob)
     auc_score   = roc_auc_score(y_test, y_test_prob)
     print(f'AUC : {auc_score:.4f}')
@@ -157,7 +155,7 @@ def train_and_save_model():
     ax.plot([0, 1], [0, 1], 'k--', lw=1, label='Random classifier')
     ax.set_xlabel('False Positive Rate')
     ax.set_ylabel('True Positive Rate')
-    ax.set_xlim(-0.005, 1)
+    ax.set_xlim(-0.004, 1)
     ax.set_ylim(0, 1.02)
     ax.legend(loc='lower right')
     ax.grid(True, alpha=0.3)
