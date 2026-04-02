@@ -38,8 +38,9 @@ WINDOW_COLORS = {
 }
 
 # Helpers
+
 def load_model():
-    """Load the pre-trained sklearn pipeline from disk."""
+    # Load the pre-trained sklearn pipeline from disk.
     if not os.path.exists(MODEL_PATH):
         raise FileNotFoundError(
             f"Trained model not found at '{MODEL_PATH}'.\n"
@@ -49,7 +50,7 @@ def load_model():
 
 
 def classify_windows(windows, clf):
-    """Run feature extraction + classification on a list of window DataFrames."""
+    # Run feature extraction + classification on a list of window DataFrames.
     labels = []
     for window in windows:
         # extract_features expects a DataFrame with ACC_COLS as the *index*
@@ -63,7 +64,7 @@ def classify_windows(windows, clf):
 
 
 def build_labeled_csv(processed_df, windows, labels):
-    """Return a DataFrame that contains only the windowed rows with label columns."""
+    # Return a DataFrame that contains only the windowed rows with label columns.
     rows = []
     for i, (window, label) in enumerate(zip(windows, labels)):
         w = window.copy()
@@ -146,8 +147,9 @@ def make_comparison_plot(raw_df, processed_df, windows, labels, save_path='class
 # Tab 1: Home
 
 class HomeTab(QWidget):
-    def __init__(self):
+    def __init__(self, gallery_tab):
         super().__init__()
+        self.gallery_tab = gallery_tab
         self._output_df    = None   # labeled DataFrame ready for download
         self._result_image = 'classification_result.png'
 
@@ -180,16 +182,6 @@ class HomeTab(QWidget):
         self._summary_label.setFont(QFont("Calibri", 12))
         self._summary_label.setVisible(False)
         root.addWidget(self._summary_label)
-
-        # Scrollable image area
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
-        self._image_label = QLabel()
-        self._image_label.setAlignment(Qt.AlignCenter)
-        self._image_label.setVisible(False)
-        scroll.setWidget(self._image_label)
-        root.addWidget(scroll, stretch=1)
 
         # Button row
         btn_row = QHBoxLayout()
@@ -235,11 +227,11 @@ class HomeTab(QWidget):
             processed_df = preprocess_csv(raw_df.copy())
 
             # 2. Segment into ~5-second windows
-            windows, _ = segment_dataframe(processed_df)
+            windows = segment_dataframe(processed_df)
             if len(windows) == 0:
                 QMessageBox.warning(
                     self, "Too short",
-                    "The CSV file is too short to form even one 5-second window.\n"
+                    "The CSV file is too short to form even one ~5-second window.\n"
                     "Please upload a longer recording."
                 )
                 return
@@ -253,6 +245,9 @@ class HomeTab(QWidget):
             # 5. Plot
             make_comparison_plot(raw_df, processed_df, windows, labels, self._result_image)
 
+            # Send to gallery
+            self.gallery_tab.add_image(self._result_image)
+
             # 6. Update UI
             n_walk = labels.count('walking')
             n_jump = labels.count('jumping')
@@ -265,9 +260,8 @@ class HomeTab(QWidget):
             self._download_btn.setVisible(True)
             self._status_label.setText(
                 f"File: {os.path.basename(path)}\n"
-                "Blue bands = Walking  |  Red bands = Jumping"
+                "Blue bands = Walking  |  Red bands = Jumping\n\nSwitch to Gallery Tab to see Plots"
             )
-            self._show_plot()
 
         except Exception as e:
             QMessageBox.critical(self, "Error during classification", str(e))
@@ -285,22 +279,6 @@ class HomeTab(QWidget):
                 self, "Saved",
                 f"Labeled CSV saved to:\n{save_path}"
             )
-
-    def _show_plot(self):
-        pixmap = QPixmap(self._result_image)
-        if pixmap.isNull():
-            return
-        # Scale to available width (leaving room for margins)
-        available_w = max(self.width() - 60, 200)
-        scaled = pixmap.scaledToWidth(available_w, Qt.SmoothTransformation)
-        self._image_label.setPixmap(scaled)
-        self._image_label.setVisible(True)
-
-    def resizeEvent(self, event):
-        if self._image_label.isVisible():
-            self._show_plot()
-        super().resizeEvent(event)
-
 
 # Tab 2: Image Gallery
 
@@ -332,18 +310,24 @@ class ImageViewer(QMainWindow):
 class ImageGalleryTab(QWidget):
     def __init__(self):
         super().__init__()
-        self.thumbnail_size = 400
-        self.columns = 2
         self._viewers = []
 
         layout = QVBoxLayout(self)
 
-        self.load_btn = QPushButton("Load Images")
-        self.load_btn.clicked.connect(self.load_images)
-        layout.addWidget(self.load_btn)
+        self.info_label = QLabel("Click plot to open it in a new window.")
+        self.info_label.setAlignment(Qt.AlignCenter)
+        self.info_label.setFont(QFont("Calibri", 14))
+        self.info_label.setStyleSheet("color: #555; margin: 8px;")
+        layout.addWidget(self.info_label)
 
+        # Scrollable image area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        self._image_label = QLabel()
+        self._image_label.setAlignment(Qt.AlignCenter)
+        self._image_label.setVisible(False)
+        scroll.setWidget(self._image_label)
         layout.addWidget(scroll)
 
         self.grid_widget = QWidget()
@@ -351,36 +335,72 @@ class ImageGalleryTab(QWidget):
         self.grid_layout.setSpacing(10)
         scroll.setWidget(self.grid_widget)
 
-    def load_images(self):
-        paths, _ = QFileDialog.getOpenFileNames(
-            self, "Select Images", "",
-            "Images (*.png *.jpg *.jpeg *.bmp *.gif *.tiff)"
-        )
-        if paths:
-            self.populate_grid(paths)
+    def add_image(self, path):
+        if not hasattr(self, "_paths"):
+            self._paths = []
+
+        self._paths.append(path)
+        self.populate_grid(self._paths)
 
     def populate_grid(self, paths):
+        # Clear existing items
         for i in reversed(range(self.grid_layout.count())):
             self.grid_layout.itemAt(i).widget().deleteLater()
+
+        if not paths:
+            return
+
+        # Get current width of the gallery
+        gallery_width = self.width()
+
+        # Decide number of columns dynamically
+        if gallery_width > 1400:
+            self.columns = 2
+        else:
+            self.columns = 1
+
+        # Compute thumbnail size based on width
+        spacing = 20
+        self.thumbnail_size = int((gallery_width - (self.columns + 1) * spacing) / self.columns)
 
         for index, path in enumerate(paths):
             pixmap = QPixmap(path)
             if pixmap.isNull():
                 continue
-            pixmap = pixmap.scaled(
-                self.thumbnail_size, self.thumbnail_size,
-                Qt.KeepAspectRatio, Qt.SmoothTransformation
+
+            scaled = pixmap.scaled(
+                self.thumbnail_size,
+                self.thumbnail_size,
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
             )
+
             label = QLabel()
-            label.setPixmap(pixmap)
+            label.setPixmap(scaled)
             label.setAlignment(Qt.AlignCenter)
-            label.setFixedSize(self.thumbnail_size, self.thumbnail_size)
+            label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             label.setStyleSheet("border: 1px solid #ccc; background: #1a1a1a;")
+
             label.mousePressEvent = lambda e, p=path: self.open_fullsize(p)
 
             row = index // self.columns
             col = index % self.columns
             self.grid_layout.addWidget(label, row, col)
+
+    def resizeEvent(self, event):
+        # Re-render current images when resizing
+        paths = []
+        for i in range(self.grid_layout.count()):
+            widget = self.grid_layout.itemAt(i).widget()
+            if widget and widget.pixmap():
+                # store original path from lambda (hacky but works if stored)
+                pass
+
+        # Instead, store paths persistently (better approach below)
+        if hasattr(self, "_paths"):
+            self.populate_grid(self._paths)
+
+        super().resizeEvent(event)
 
     def open_fullsize(self, path):
         viewer = ImageViewer(path, parent=self)
@@ -399,8 +419,12 @@ class MainWindow(QMainWindow):
 
         self.tabs = QTabWidget()
         self.tabs.setTabPosition(QTabWidget.North)
-        self.tabs.addTab(HomeTab(),         "🏠  Home")
-        self.tabs.addTab(ImageGalleryTab(), "🖼️  Gallery")
+
+        self.gallery_tab = ImageGalleryTab()
+        self.home_tab = HomeTab(self.gallery_tab)
+
+        self.tabs.addTab(self.home_tab, "🏠  Home")
+        self.tabs.addTab(self.gallery_tab, "🖼️  Gallery")
         self.tabs.currentChanged.connect(self._on_tab_change)
         self.setCentralWidget(self.tabs)
 
