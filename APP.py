@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import (QPixmap, QFont)
 from PyQt5.QtCore import Qt
-#from preprocessing import preprocess_csv
+from preprocessing import preprocess_csv
 
 
 # ─── Tab 1: Home ────────────────────────────────────────────────────────────
