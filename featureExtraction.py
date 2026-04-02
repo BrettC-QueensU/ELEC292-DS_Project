@@ -49,7 +49,6 @@ def extract_features(input_df):
 
     return feature_df
 
-# helper function to split one pre-processed dataframe into approximately 5-second windows,
 # If there are at least 4 seconds of data remaining after the final full 5-second window,
 # Then saves one last window.
 def segment_dataframe(df):
