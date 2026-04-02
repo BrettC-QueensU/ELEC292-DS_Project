@@ -1,8 +1,5 @@
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
-
-# UNSURE IF FEATURES MUST BE UNIQUE. e.x.:
-# whether x-acc mean and y-acc mean counts as 1 feature (mean) or two features, (mean of x acc, mean of y acc)
+import numpy as np
 
 # Extracts 10+ features from an inputted data-frame
 # Treats the inputted df as a single window to extract data from
@@ -52,3 +49,27 @@ def extract_features(input_df):
 
     return feature_df
 
+# If there are at least 4 seconds of data remaining after the final full 5-second window,
+# Then saves one last window.
+def segment_dataframe(df):
+    times = df.iloc[:, 0].values
+    sample_period = float(np.median(np.diff(times)))
+    samples_per_window = int(round(5 / sample_period))
+    min_samples = int(round(4 / sample_period))  # minimum samples for a 4-second window
+    trim_samples = int(round(0.25 / sample_period))  # 0.25 seconds to remove from last window if shorter window
+
+    n_complete = len(df) // samples_per_window  # number of full windows
+    windows = []
+    for i in range(n_complete):
+        start = i * samples_per_window
+        end = start + samples_per_window
+        windows.append(df.iloc[start:end].reset_index(drop=True))
+
+    ## Check if the remaining samples form at least a 4-second window
+    remainder_start = n_complete * samples_per_window
+    remainder = df.iloc[remainder_start:]
+    if len(remainder) >= min_samples:
+        trimmed_end = len(remainder) - trim_samples
+        windows.append(remainder.iloc[:trimmed_end])
+
+    return windows

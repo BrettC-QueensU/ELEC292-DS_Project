@@ -5,20 +5,7 @@ import pandas as pd
 import h5py
 import glob
 
-# helper function to split one pre-processed dataframe into approximately 5-second windows
-def segment_dataframe(df):
-    times = df.iloc[:, 0].values
-    sample_period = float(np.median(np.diff(times)))
-    samples_per_window = int(round(5 / sample_period))
-
-    n_complete = len(df) // samples_per_window  # number of full windows
-    windows = []
-    for i in range(n_complete):
-        start = i * samples_per_window
-        end = start + samples_per_window
-        windows.append(df.iloc[start:end].reset_index(drop=True))
-
-    return windows
+from featureExtraction import segment_dataframe
 
 
 #Create a new hdf5 file with the name hdf5_data.h5 in write mode
@@ -116,30 +103,3 @@ with h5py.File('./hdf5_data.h5', 'w') as hdf:
 
     save_windows(train_idx, 'Train')
     save_windows(test_idx, 'Test')
-
-    #lastly, create group segmented data with subgroups train and test
-    #iterate through the pre processed data and resample each file into a
-    ##dataframe with 5 second intervals.
-    #Group = hdf.get('Pre-Processed Data')
-    #ls = list(Group.keys())
-    #print(ls)
-    #all_data = [] #stores an array with all the 5 second splits
-    #for sg in ls:
-    #    files = list(Group.get(sg).keys())
-    #    print(files)
-    #    for file in files:
-    #        data = Group.get(sg).get(file)
-    #        data = np.array(data)
-    #        df = pd.DataFrame(data[:, 0], columns=['value'])
-    #        df.index = pd.to_datetime(data[:, 0], unit='s')
-    #        windowed = df['value'].resample('5s').mean()
-    #        all_data.append(windowed)
-    #combined = pd.concat(all_data).dropna()
-#
-    #train_df, test_df = train_test_split(combined, test_size=0.1, shuffle=True, random_state=42)
-#
-    #G31 = hdf.create_group('/Segmented Data/Train')
-    #G31.create_dataset('Train', data = train_df)
-    #G32 = hdf.create_group('/Segmented Data/Test')
-    #G32.create_dataset('Test', data = test_df)
-#
