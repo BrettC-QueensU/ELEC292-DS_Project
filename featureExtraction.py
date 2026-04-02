@@ -1,5 +1,5 @@
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+import numpy as np
 
 # UNSURE IF FEATURES MUST BE UNIQUE. e.x.:
 # whether x-acc mean and y-acc mean counts as 1 feature (mean) or two features, (mean of x acc, mean of y acc)
