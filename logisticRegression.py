@@ -90,10 +90,16 @@ def train_and_save_model():
 
     # Evaluate
     y_test_pred = clf.predict(x_test)
+    y_train_pred = clf.predict(x_train)
+
     test_acc    = accuracy_score(y_test, y_test_pred)
     test_recall = recall_score(y_test, y_test_pred)
+    train_acc = accuracy_score(y_train, y_train_pred)
+    train_recall = recall_score(y_train, y_train_pred)
 
     print(f'\n--- Classification Results ---')
+    print(f'  Train accuracy : {train_acc:.4f}  ({train_acc * 100:.1f} %)')
+    print(f'  Train recall   : {train_recall:.4f}')
     print(f'  Test accuracy : {test_acc:.4f}  ({test_acc * 100:.1f} %)')
     print(f'  Test recall   : {test_recall:.4f}')
 

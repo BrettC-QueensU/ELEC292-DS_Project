@@ -353,11 +353,7 @@ class ImageGalleryTab(QWidget):
         # Get current width of the gallery
         gallery_width = self.width()
 
-        # Decide number of columns dynamically
-        if gallery_width > 1400:
-            self.columns = 2
-        else:
-            self.columns = 1
+        self.columns = 1
 
         # Compute thumbnail size based on width
         spacing = 20
