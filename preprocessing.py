@@ -1,5 +1,6 @@
 import glob
 import pandas as pd
+import matplotlib.pyplot as plt
 
 def preprocess_csv(df: pd.DataFrame):
     # import csv file as data frame, and interpolate to fill any missing values
@@ -47,6 +48,13 @@ for filepath in files:
     df_processed_Vince = preprocess_csv((pd.read_csv(filepath)))
     df_processed_Vince.to_csv('Pre-Processed_Data/Vince/' + filename + '_PreProcessed.csv', index=False)
 
+
+#Visualisation used to aid with trial and error of window size
+#time = df['Time (s)']
+#ax = y_sma['Linear Acceleration x (m/s^2)']
+#ay = y_sma['Linear Acceleration y (m/s^2)']
+#az = y_sma['Linear Acceleration z (m/s^2)']
+#aa = y_sma['Absolute acceleration (m/s^2)']
 
 #fig, jump = plt.subplots(figsize=(12, 5))
 
