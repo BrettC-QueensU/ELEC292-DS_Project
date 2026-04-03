@@ -49,14 +49,18 @@ def load_windows_from_hdf5(hdf5_path, split='Train'):
             for window_key in label_group:
                 raw = label_group[window_key][:]  # numpy array
 
-                # Shape handling – expect (n_samples, 4 or 5)
-                if raw.ndim == 2 and raw.shape[1] == 5:
-                    raw = raw[:, :4]          # drop time column if present
-                elif raw.ndim == 2 and raw.shape[0] == 5:
-                    raw = raw[:4, :]
+                # Normalise to (n_samples, n_cols) layout first
+                if raw.ndim == 2 and raw.shape[0] < raw.shape[1]:
+                    raw = raw.T               # → (n_samples, n_cols)
 
-                if raw.ndim == 2 and raw.shape[0] == 4:
-                    raw = raw.T               # → (n_samples, 4)
+                # Strip time column, keep all 4 acc columns (x, y, z, abs)
+                n_cols = raw.shape[1]
+                if n_cols == 5:
+                    raw = raw[:, 1:5]         # drop time → keep x y z abs
+                elif n_cols == 4:
+                    pass                      # already x y z abs
+                else:
+                    raise ValueError(f'Unexpected number of columns: {n_cols}')
 
                 # DataFrame with ACC_COLS as index so extract_features can use .loc
                 window_df = pd.DataFrame(
@@ -64,7 +68,7 @@ def load_windows_from_hdf5(hdf5_path, split='Train'):
                     index=ACC_COLS,
                 )
 
-                feat_row = extract_features(window_df)   # (1, 40)
+                feat_row = extract_features(window_df)   # (1, n_features)
                 x_list.append(feat_row.values[0])
                 y_list.append(label_int)
 
@@ -170,7 +174,7 @@ def train_and_save_model():
     plt.savefig('step6_results.png', dpi=150, bbox_inches='tight')
     plt.show()
 
-    # ── Save model ─────────────────────────────────────────────────────────
+    # Save model
     joblib.dump(clf, MODEL_PATH)
     print(f'\nModel saved to "{MODEL_PATH}"')
 
