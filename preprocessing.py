@@ -57,17 +57,16 @@ for filepath in files:
 #ax = df['Linear Acceleration x (m/s^2)']
 #ay = df['Linear Acceleration y (m/s^2)']
 #az = df['Linear Acceleration z (m/s^2)']
-#aa = df['Absolute acceleration (m/s^2)']
 
 #fig, jump = plt.subplots(figsize=(12, 5))
 
 #jump.plot(time, ax, label='X', color='tab:blue', linewidth=1.2)
 #jump.plot(time, ay, label='Y', color='tab:orange', linewidth=1.2)
 #jump.plot(time, az, label='Z', color='tab:green', linewidth=1.2)
-#jump.plot(time, aa, label='Absolute', color='tab:purple', linewidth=1.2)
+
 #jump.set_xlabel('Time (s)', fontsize=12)
 #jump.set_ylabel('Linear Acceleration (m/s²)', fontsize=12)
-#jump.set_title('Linear Acceleration vs Time (X, Y, Z, Absolute)', fontsize=14)
+#jump.set_title('Linear Acceleration vs Time (X, Y, Z)', fontsize=14)
 #jump.legend(title='Axis', fontsize=12)
 #jump.grid(True, linestyle='--', alpha=0.5)
 #jump.axhline(0, color='black', linewidth=0.8, linestyle='-')
