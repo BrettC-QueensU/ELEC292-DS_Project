@@ -78,7 +78,7 @@ def load_windows_from_hdf5(hdf5_path, split='Train'):
 
 
 def train_and_save_model():
-    """Train the logistic regression pipeline and persist it to MODEL_PATH."""
+    # Train the logistic regression pipeline and persist it to MODEL_PATH.
     print('Loading training windows …')
     x_train, y_train = load_windows_from_hdf5(HDF5_PATH, split='Train')
     x_test,  y_test  = load_windows_from_hdf5(HDF5_PATH, split='Test')
